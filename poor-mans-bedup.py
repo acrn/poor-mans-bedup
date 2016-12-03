@@ -6,16 +6,22 @@
 
 import hashlib
 import os
+import re
 import subprocess
 import sys
 import collections
 
 kilo = 2**10
 
-size_thresh = 4 * kilo
+size_thresh = 2 * kilo
+
+ignores = tuple(map(re.compile, [
+    '.*/\.git']))
 
 def yield_things(pathname='.'):
     if os.path.islink(pathname):
+        return
+    if any(x.match(pathname) for x in ignores):
         return
     if os.path.isdir(pathname):
         for x in os.listdir(pathname):
