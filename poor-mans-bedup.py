@@ -31,7 +31,7 @@ def walk(pathname):
     stat = os.stat(pathname)
     if stat.st_size < size_thresh:
         return
-    yield pathname
+    yield (stat.st_mtime, pathname)
 
 blocksize = 64 * kilo
 def hash_file(pathname):
@@ -49,15 +49,16 @@ hashes = collections.defaultdict(list)
 
 paths = sys.argv[1:] if len(sys.argv) > 1 else ['.']
 for path in paths:
-    for filename in walk(os.path.abspath(path)):
-        hashes[hash_file(filename)].append(filename)
+    for mtime, filename in walk(os.path.abspath(path)):
+        hashes[hash_file(filename)].append((mtime, filename))
 
 speculative_savings = sum(k[0] * (len(v) - 1) for k, v in hashes.items())
 
-duplists = (sorted(v) for k, v in hashes.items() if len(v) > 1)
+duplists = filter(lambda v: len(v) > 1, hashes.values())
 for dups in duplists:
-    keep = dups[0]
-    for dup in dups[1:]:
+    dupnames = [d[1] for d in sorted(dups)]
+    keep = dupnames[0]
+    for dup in dupnames[1:]:
         # python can't do reflinks far as I can tell, have to shell out
         subprocess.call([
                 '/usr/bin/cp',
