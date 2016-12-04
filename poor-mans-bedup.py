@@ -61,7 +61,7 @@ for dups in duplists:
         # python can't do reflinks far as I can tell, have to shell out
         subprocess.call([
                 '/usr/bin/cp',
-                '--reflink=always',
+                '--reflink=auto',
                 '--no-preserve=all',
                 keep,
                 dup])
