@@ -18,14 +18,14 @@ size_thresh = 2 * kilo
 ignores = tuple(map(re.compile, [
     '.*/\.git']))
 
-def yield_things(pathname='.'):
+def walk(pathname):
     if os.path.islink(pathname):
         return
     if any(x.match(pathname) for x in ignores):
         return
     if os.path.isdir(pathname):
         for x in os.listdir(pathname):
-            yield from yield_things(os.path.join(pathname, x))
+            yield from walk(os.path.join(pathname, x))
     if not os.path.isfile(pathname):
         return
     stat = os.stat(pathname)
@@ -49,12 +49,12 @@ hashes = collections.defaultdict(list)
 
 paths = sys.argv[1:] if len(sys.argv) > 1 else ['.']
 for path in paths:
-    for filename in yield_things(path):
+    for filename in walk(os.path.abspath(path)):
         hashes[hash_file(filename)].append(filename)
 
 speculative_savings = sum(k[0] * (len(v) - 1) for k, v in hashes.items())
 
-duplists = (v for k, v in hashes.items() if len(v) > 1)
+duplists = (sorted(v) for k, v in hashes.items() if len(v) > 1)
 for dups in duplists:
     keep = dups[0]
     for dup in dups[1:]:
@@ -62,7 +62,7 @@ for dups in duplists:
         subprocess.call([
                 '/usr/bin/cp',
                 '--reflink=always',
-                '--preserve=all',
+                '--no-preserve=all',
                 keep,
                 dup])
     print("reflinked {} dups of {}".format(len(dups) - 1, keep))
